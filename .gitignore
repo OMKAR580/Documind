@@ -1,0 +1,53 @@
+# ============================================
+# DocuMind — .gitignore
+# ============================================
+
+# ----- Node / Frontend -----
+node_modules/
+.next/
+out/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+
+# ----- Python / Backend -----
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+env/
+*.egg-info/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# ----- Environment / Secrets -----
+.env
+.env.local
+.env.*.local
+*.env
+
+# ----- Docker -----
+*.log
+
+# ----- OS Files -----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ----- IDEs -----
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# ----- Misc -----
+*.zip
+*.tar.gz
