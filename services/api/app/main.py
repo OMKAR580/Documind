@@ -1,19 +1,22 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from app.api.v1.routes import health
+from app.core.config import settings
 
 app = FastAPI(
-    title="DocuMind API",
-    description="AI-powered multimodal document intelligence platform",
-    version="0.1.0",
+    title=settings.PROJECT_NAME,
+    description="AI-powered multimodal document intelligence platform API",
+    version=settings.VERSION,
     docs_url="/api/docs",
     redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
 )
 
-# CORS — Allow frontend (localhost:3000) to call this API
+# CORS Middleware using settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -22,11 +25,17 @@ app.add_middleware(
 # Register routes
 app.include_router(
     health.router,
-    prefix="/api/v1",
+    prefix=settings.API_V1_STR,
     tags=["health"],
 )
 
 
-@app.get("/")
+@app.get("/", summary="Root API Information")
 async def root():
-    return {"message": "DocuMind API is running. Visit /api/docs for documentation."}
+    return {
+        "name": settings.PROJECT_NAME,
+        "version": settings.VERSION,
+        "environment": settings.ENVIRONMENT,
+        "docs_url": "/api/docs",
+        "health_url": f"{settings.API_V1_STR}/health",
+    }

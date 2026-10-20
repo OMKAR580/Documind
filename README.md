@@ -1,24 +1,173 @@
-# DocuMind
+# DocuMind AI
 
-AI-powered multimodal document intelligence platform.
+AI-powered multimodal document intelligence platform for extracting insights, answering questions with exact citations, and reasoning across complex documents (PDFs, DOCX, images).
 
-## What is DocuMind?
+---
 
-DocuMind allows you to upload documents (PDFs, images, scanned files),
-ask questions in plain English, and receive AI-generated answers
-with exact citations and cross-document reasoning.
+## Architecture Overview
+
+DocuMind is architected as a **modular monolith** with clean boundaries across services, background processing, and UI:
+
+```
+Documind/
+├── .github/workflows/       # GitHub Actions CI quality gates
+├── apps/
+│   └── web/                 # Next.js 16 (Turbopack, React 19, Tailwind CSS v4, shadcn UI)
+├── services/
+│   ├── api/                 # FastAPI REST API (Pydantic Settings, SQLAlchemy 2, Alembic)
+│   └── worker/              # Background processing worker (OCR, chunking, embeddings)
+├── ai/                      # AI modules (agents, computer vision, NLP, RAG)
+├── packages/
+│   └── shared/              # Shared schemas and utilities
+├── infra/
+│   └── docker/              # Production & development Dockerfiles
+├── .env.example             # Safe environment variable configuration template
+├── docker-compose.yml       # Containerized orchestration (PostgreSQL, Redis, API, Worker, Web)
+└── README.md
+```
+
+---
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js + TypeScript + Tailwind CSS |
-| Backend | FastAPI + Python |
-| Database | PostgreSQL |
-| Cache / Queue | Redis |
-| AI / ML | NLP, OCR, RAG, Embeddings |
-| Infrastructure | Docker + Docker Compose |
-| CI/CD | GitHub Actions |
+| **Frontend** | Next.js 16 (App Router), TypeScript, Tailwind CSS v4, shadcn UI |
+| **API Backend** | Python 3.12+, FastAPI, Pydantic v2 Settings |
+| **Database & ORM** | PostgreSQL 16, SQLAlchemy 2.0, Alembic migrations |
+| **Worker & Queue** | Python worker, Redis 7 (Celery/ARQ queue integration in Sprint 2+) |
+| **AI / ML Pipeline** | Document parsers, embeddings, RAG, agent workflows (Phased) |
+| **Infrastructure** | Docker, Docker Compose, GitHub Actions CI/CD |
 
-## Project Structure
+---
 
+## Getting Started
+
+### Prerequisites
+
+- **Node.js**: `v20.x` or higher
+- **Python**: `3.12.x` or higher
+- **Git**
+- **Docker & Docker Compose** *(Optional for local containerized development)*
+
+---
+
+### Method A: Native Local Development (Windows / Linux / macOS)
+
+#### 1. Clone & Configure Environment
+
+```bash
+git clone https://github.com/OMKAR580/Documind.git
+cd Documind
+copy .env.example .env     # Windows PowerShell / CMD
+# or: cp .env.example .env  # Linux / macOS
+```
+
+#### 2. Start Backend API (`services/api`)
+
+```bash
+cd services/api
+
+# Create and activate virtual environment
+python -m venv venv
+.\venv\Scripts\activate       # Windows PowerShell
+# source venv/bin/activate     # Linux / macOS
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run migrations (when PostgreSQL is active)
+alembic upgrade head
+
+# Start API dev server (runs on http://localhost:8000)
+uvicorn app.main:app --reload --port 8000
+```
+
+- API Docs: `http://localhost:8000/api/docs`
+- Health Liveness: `http://localhost:8000/api/v1/health`
+- Health Readiness: `http://localhost:8000/api/v1/health/ready`
+
+#### 3. Start Frontend (`apps/web`)
+
+```bash
+cd apps/web
+
+# Install dependencies
+npm install
+
+# Start Next.js development server (runs on http://localhost:3000)
+npm run dev
+```
+
+#### 4. Run Background Worker (`services/worker`)
+
+```bash
+cd services/worker
+
+# Activate the shared or dedicated Python environment
+python -m app.worker
+```
+
+---
+
+### Method B: Containerized Development (Docker Compose)
+
+Ensure Docker Desktop is running, then execute from the repository root:
+
+```bash
+# Start all services (PostgreSQL, Redis, API, Worker, Web)
+docker compose up --build
+
+# Run in detached mode
+docker compose up -d
+
+# Check service logs
+docker compose logs -f api
+
+# Tear down services and retain volume data
+docker compose down
+```
+
+---
+
+## Quality Checks & Automated Testing
+
+### Backend Quality Suite (`services/api`)
+
+```bash
+cd services/api
+
+# Run unit and integration tests with Pytest
+pytest -v
+
+# Run Ruff linter
+ruff check .
+
+# Check code formatting with Ruff
+ruff format --check .
+```
+
+### Frontend Quality Suite (`apps/web`)
+
+```bash
+cd apps/web
+
+# Run ESLint
+npm run lint
+
+# Run TypeScript type check
+npx tsc --noEmit
+
+# Run production build
+npm run build
+```
+
+---
+
+## Branching Strategy & Git Workflow
+
+This project adheres to a strict two-branch release flow:
+
+- **`develop`**: Primary integration branch for active development and validated feature work.
+- **`main`**: Production-ready branch containing only fully tested and validated phase releases.
+- **Rule**: Direct pushes to `main` are restricted. All features and fixes integrate into `develop` first. Phase releases from `develop` to `main` occur only after complete regression testing.
