@@ -21,24 +21,24 @@ logger = logging.getLogger(__name__)
 def process_document(document_id: str) -> dict:
     """
     Placeholder for document processing pipeline.
-    
+
     Future implementation will:
     1. Fetch document from storage
     2. Run OCR (if scanned)
     3. Extract and chunk text
     4. Generate embeddings
     5. Store in vector database
-    
+
     Args:
         document_id: Unique identifier of the document to process
-        
+
     Returns:
         dict with processing status
     """
     logger.info(f"[WORKER] Processing document: {document_id}")
     logger.info("[WORKER] OCR → Chunking → Embedding → Storage")
     logger.info(f"[WORKER] Document {document_id} processing complete (placeholder)")
-    
+
     return {
         "document_id": document_id,
         "status": "processed",
