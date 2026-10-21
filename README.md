@@ -76,16 +76,20 @@ python -m venv venv
 # Install dependencies
 pip install -r requirements.txt
 
-# Run migrations (when PostgreSQL is active)
+# Inspect static migration SQL (offline, no database required)
+alembic upgrade head --sql
+
+# Run migrations against active PostgreSQL database
 alembic upgrade head
 
 # Start API dev server (runs on http://localhost:8000)
 uvicorn app.main:app --reload --port 8000
 ```
 
-- API Docs: `http://localhost:8000/api/docs`
-- Health Liveness: `http://localhost:8000/api/v1/health`
-- Health Readiness: `http://localhost:8000/api/v1/health/ready`
+- **Interactive API Docs**: `http://localhost:8000/api/docs`
+- **Alternative ReDoc**: `http://localhost:8000/api/redoc`
+- **Process Liveness Probe**: `http://localhost:8000/api/v1/health`
+- **Dependency Readiness Probe**: `http://localhost:8000/api/v1/health/ready`
 
 #### 3. Start Frontend (`apps/web`)
 
@@ -130,6 +134,48 @@ docker compose down
 
 ---
 
+## Backend Architecture & Conventions (Phase 1)
+
+### 1. Centralized Configuration & Security
+- Managed via `app.core.config.Settings` (Pydantic Settings v2).
+- Validates environment mode (`development`, `testing`, `staging`, `production`).
+- **Production Safety:** Startup fails fast if default credentials (`postgres:postgres`) or insecure `SECRET_KEY` are used in production mode.
+- Passwords and connection credentials in database URLs are automatically sanitized in logs.
+
+### 2. Database & SQLAlchemy 2.0
+- SQLAlchemy 2.0 with connection pooling (`pool_size`, `max_overflow`, `pool_pre_ping`).
+- Asynchronous-safe design: Blocking database connection checks in endpoints are offloaded via `run_in_threadpool` to prevent event loop starvation.
+- Modern `DeclarativeBase` (`app.models.base.Base`) with `TimestampMixin` and `UUIDPrimaryKeyMixin`.
+- Lightweight `BaseRepository` pattern for clean, testable data access (`app.repositories.base.BaseRepository`).
+- Core infrastructure model: `SystemMetadata` (`system_metadata`) for tracking platform state and schema metadata without premature business-domain tables.
+
+### 3. Alembic Database Migrations
+- Migration files located in `services/api/alembic/versions/`.
+- Initial revision: `0001_initial_core_schema.py` creating `system_metadata`.
+- Autogeneration targets `Base.metadata` via `app.models`.
+- Generate offline SQL: `alembic upgrade head --sql`
+- Apply migrations: `alembic upgrade head`
+- Revert migrations: `alembic downgrade base`
+
+### 4. Consistent Error Handling Envelopes
+All API endpoints return predictable, standardized JSON error responses:
+```json
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Resource not found",
+    "details": null
+  }
+}
+```
+Global exception handlers automatically catch:
+- `AppException` (application-specific domain errors)
+- `StarletteHTTPException` / `HTTPException` (standard HTTP errors)
+- `RequestValidationError` (422 validation errors with sanitized field details)
+- `Exception` (unhandled 500 server errors, logging full tracebacks internally without exposing stack traces to clients)
+
+---
+
 ## Quality Checks & Automated Testing
 
 ### Backend Quality Suite (`services/api`)
@@ -137,7 +183,7 @@ docker compose down
 ```bash
 cd services/api
 
-# Run unit and integration tests with Pytest
+# Run full unit and integration test suite (23 tests)
 pytest -v
 
 # Run Ruff linter
@@ -145,6 +191,9 @@ ruff check .
 
 # Check code formatting with Ruff
 ruff format --check .
+
+# Validate offline Alembic migration DDL generation
+alembic upgrade head --sql
 ```
 
 ### Frontend Quality Suite (`apps/web`)
