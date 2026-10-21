@@ -10,7 +10,7 @@ from alembic import context
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.core.config import settings
-from app.core.database import Base
+from app.models import Base  # Loads all registered models into Base.metadata
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -20,10 +20,14 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Set dynamic database URL from settings
-config.set_main_option("sqlalchemy.url", settings.sync_database_url)
+# Set dynamic database URL from settings if not overridden
+if (
+    not config.get_main_option("sqlalchemy.url")
+    or config.get_main_option("sqlalchemy.url") == "driver://user:pass@localhost/dbname"
+):
+    config.set_main_option("sqlalchemy.url", settings.sync_database_url)
 
-# Add your model's MetaData object here for 'autogenerate' support
+# Model metadata for autogenerate support
 target_metadata = Base.metadata
 
 
@@ -35,6 +39,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        compare_type=True,
     )
 
     with context.begin_transaction():
@@ -44,7 +49,8 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
     configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = settings.sync_database_url
+    db_url = config.get_main_option("sqlalchemy.url") or settings.sync_database_url
+    configuration["sqlalchemy.url"] = db_url
 
     connectable = engine_from_config(
         configuration,
@@ -53,7 +59,11 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            compare_type=True,
+        )
 
         with context.begin_transaction():
             context.run_migrations()
